@@ -64,8 +64,8 @@
           <div class="field full-width">
             <span class="field-label">想定利益の表示通貨</span>
             <div class="currency-switch" role="group" aria-label="想定利益の表示通貨">
-              <button class="currency-button active" type="button" data-currency="USD" aria-pressed="true">ドル表示</button>
-              <button class="currency-button" type="button" data-currency="JPY" aria-pressed="false">円表示</button>
+              <button class="currency-button profit-currency-button active" type="button" data-currency="USD" aria-pressed="true">ドル表示</button>
+              <button class="currency-button profit-currency-button" type="button" data-currency="JPY" aria-pressed="false">円表示</button>
             </div>
             <p class="hint">円表示はUSD/JPYレートでドル建て損益を円換算します。</p>
           </div>
@@ -82,8 +82,16 @@
             <input id="lotsPips" type="number" inputmode="decimal" min="0" step="0.01" value="1" required />
           </div>
           <div class="field">
-            <label for="targetProfit">目標利益（USD）</label>
+            <label for="targetProfit" id="targetProfitLabel">目標利益（USD）</label>
             <input id="targetProfit" type="number" inputmode="decimal" step="1" value="100" required />
+          </div>
+          <div class="field">
+            <span class="field-label">目標利益の入力通貨</span>
+            <div class="currency-switch" role="group" aria-label="目標利益の入力通貨">
+              <button class="currency-button target-currency-button active" type="button" data-currency="USD" aria-pressed="true">ドル入力</button>
+              <button class="currency-button target-currency-button" type="button" data-currency="JPY" aria-pressed="false">円入力</button>
+            </div>
+            <p class="hint">円入力はUSD/JPYレートでドル建て目標利益に換算して必要pipsを計算します。</p>
           </div>
           <output class="result-card" id="pipsResult" for="symbol lotsPips targetProfit usdJpyRate goldAccountType">
             <span class="result-label">必要な変動幅</span>
