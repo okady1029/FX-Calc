@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FX Pips 利益計算ツール</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">FX / Gold Profit Calculator</p>
+        <h1 id="page-title">ロット・pips・利益をすばやく換算</h1>
+        <p class="lead">
+          EUR/USD、USD/JPY、GOLD/USD（XAU/USD）を切り替えて、指定したロットで何pips動くと何ドルの損益になるか、また目標利益に必要なpipsを計算できます。
+        </p>
+      </section>
+
+      <section class="calculator" aria-label="計算フォーム">
+        <div class="field full-width">
+          <label for="symbol">通貨ペア / 銘柄</label>
+          <select id="symbol" name="symbol">
+            <option value="EURUSD">EUR/USD</option>
+            <option value="USDJPY">USD/JPY</option>
+            <option value="XAUUSD">GOLD/USD (XAU/USD)</option>
+          </select>
+        </div>
+
+        <div class="field full-width rate-field" id="usdJpyRateField" hidden>
+          <label for="usdJpyRate">USD/JPY レート</label>
+          <input id="usdJpyRate" type="number" inputmode="decimal" min="1" step="0.001" value="155.000" />
+          <p class="hint">USD/JPYは1pipの価値をドル換算するため、現在レートを入力してください。</p>
+        </div>
+
+        <div class="mode-tabs" role="tablist" aria-label="計算モード">
+          <button class="mode-tab active" type="button" data-mode="profit" aria-selected="true">pips → 利益</button>
+          <button class="mode-tab" type="button" data-mode="pips" aria-selected="false">利益 → 必要pips</button>
+        </div>
+
+        <form id="profitForm" class="calc-form" data-panel="profit">
+          <div class="field">
+            <label for="lotsProfit">ロット数</label>
+            <input id="lotsProfit" type="number" inputmode="decimal" min="0" step="0.01" value="1" required />
+          </div>
+          <div class="field">
+            <label for="pipsMove">変動pips</label>
+            <input id="pipsMove" type="number" inputmode="decimal" step="0.1" value="10" required />
+          </div>
+          <output class="result-card" id="profitResult" for="symbol lotsProfit pipsMove usdJpyRate">
+            <span class="result-label">想定利益</span>
+            <strong>$0.00</strong>
+            <small>pipsがマイナスの場合は損失として表示されます。</small>
+          </output>
+        </form>
+
+        <form id="pipsForm" class="calc-form hidden" data-panel="pips">
+          <div class="field">
+            <label for="lotsPips">ロット数</label>
+            <input id="lotsPips" type="number" inputmode="decimal" min="0" step="0.01" value="1" required />
+          </div>
+          <div class="field">
+            <label for="targetProfit">目標利益（USD）</label>
+            <input id="targetProfit" type="number" inputmode="decimal" step="1" value="100" required />
+          </div>
+          <output class="result-card" id="pipsResult" for="symbol lotsPips targetProfit usdJpyRate">
+            <span class="result-label">必要な変動幅</span>
+            <strong>0 pips</strong>
+            <small>利益をマイナスにすると、損失額に相当するpipsを計算できます。</small>
+          </output>
+        </form>
+
+        <aside class="formula" aria-labelledby="formula-title">
+          <h2 id="formula-title">計算ルール</h2>
+          <ul id="instrumentDetails"></ul>
+          <p>1ロットあたりのpips価値 × ロット数 × pips = 損益（USD）として計算します。</p>
+        </aside>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
