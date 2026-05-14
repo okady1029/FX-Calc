@@ -29,7 +29,7 @@
         <div class="field full-width rate-field" id="usdJpyRateField" hidden>
           <label for="usdJpyRate">USD/JPY レート</label>
           <input id="usdJpyRate" type="number" inputmode="decimal" min="1" step="0.001" value="155.000" />
-          <p class="hint">USD/JPYは1pipの価値をドル換算するため、現在レートを入力してください。</p>
+          <p class="hint" id="usdJpyRateHint">USD/JPYは1pipの価値をドル換算するため、現在レートを入力してください。</p>
         </div>
 
         <div class="field full-width gold-account-field" id="goldAccountField" hidden>
@@ -60,6 +60,14 @@
             <label for="goldPriceMove">GOLDの価格変動幅（ドル）</label>
             <input id="goldPriceMove" type="number" inputmode="decimal" step="0.01" value="0.10" />
             <p class="hint">GOLD/USDは1ドル動くと100pipsとして扱うため、pips入力と自動で連動します。</p>
+          </div>
+          <div class="field full-width">
+            <span class="field-label">想定利益の表示通貨</span>
+            <div class="currency-switch" role="group" aria-label="想定利益の表示通貨">
+              <button class="currency-button active" type="button" data-currency="USD" aria-pressed="true">ドル表示</button>
+              <button class="currency-button" type="button" data-currency="JPY" aria-pressed="false">円表示</button>
+            </div>
+            <p class="hint">円表示はUSD/JPYレートでドル建て損益を円換算します。</p>
           </div>
           <output class="result-card" id="profitResult" for="symbol lotsProfit pipsMove goldPriceMove usdJpyRate goldAccountType">
             <span class="result-label">想定利益</span>
