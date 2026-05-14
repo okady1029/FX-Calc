@@ -86,12 +86,14 @@ const instruments = {
 const symbolSelect = document.querySelector("#symbol");
 const usdJpyRateField = document.querySelector("#usdJpyRateField");
 const usdJpyRateInput = document.querySelector("#usdJpyRate");
+const usdJpyRateHint = document.querySelector("#usdJpyRateHint");
 const goldAccountField = document.querySelector("#goldAccountField");
 const goldAccountType = document.querySelector("#goldAccountType");
 const pipsMoveInput = document.querySelector("#pipsMove");
 const goldPriceMoveField = document.querySelector("#goldPriceMoveField");
 const goldPriceMoveInput = document.querySelector("#goldPriceMove");
 const modeTabs = document.querySelectorAll(".mode-tab");
+const currencyButtons = document.querySelectorAll(".currency-button");
 const panels = document.querySelectorAll(".calc-form");
 const profitResult = document.querySelector("#profitResult");
 const pipsResult = document.querySelector("#pipsResult");
@@ -102,6 +104,7 @@ const riskDetail = document.querySelector("#riskDetail");
 const instrumentDetails = document.querySelector("#instrumentDetails");
 
 let lastGoldMoveInput = "pips";
+let profitCurrency = "USD";
 
 pipsMoveInput.addEventListener("input", () => {
   lastGoldMoveInput = "pips";
@@ -113,6 +116,18 @@ goldPriceMoveInput.addEventListener("input", () => {
 
 const inputs = document.querySelectorAll("input, select");
 inputs.forEach((input) => input.addEventListener("input", calculate));
+
+currencyButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    profitCurrency = button.dataset.currency;
+    currencyButtons.forEach((item) => {
+      const isActive = item === button;
+      item.classList.toggle("active", isActive);
+      item.setAttribute("aria-pressed", String(isActive));
+    });
+    calculate();
+  });
+});
 
 modeTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
@@ -154,7 +169,7 @@ function calculateProfit() {
   const pips = getProfitPips();
   const profit = lots * pips * getPipValue();
 
-  profitResult.querySelector("strong").textContent = formatCurrency(profit);
+  profitResult.querySelector("strong").textContent = formatProfit(profit);
   profitDetail.textContent = getProfitDetail(lots, pips, profit);
 }
 
@@ -211,12 +226,22 @@ function syncGoldMoveInputs() {
 }
 
 function getProfitDetail(lots, pips, profit) {
+  const convertedProfit = getProfitConversionDetail(profit);
+
   if (symbolSelect.value !== "XAUUSD") {
-    return `1ロットあたり${formatCurrency(getPipValue())} × ${formatNumber(lots, 2)}ロット × ${formatNumber(pips, 2)}pips = ${formatCurrency(profit)}。`;
+    return `1ロットあたり${formatCurrency(getPipValue())} × ${formatNumber(lots, 2)}ロット × ${formatNumber(pips, 2)}pips = ${formatCurrency(profit)}。${convertedProfit}`;
   }
 
   const priceMove = instruments.XAUUSD.priceMoveFromPips(pips);
-  return `${formatNumber(pips, 2)}pips = ${formatNumber(priceMove, 2)}ドルの値幅。${formatNumber(priceMove, 2)}ドル × ${formatNumber(lots, 2)}ロット × ${getGoldProfile().contractSize}oz = ${formatCurrency(profit)}。`;
+  return `${formatNumber(pips, 2)}pips = ${formatNumber(priceMove, 2)}ドルの値幅。${formatNumber(priceMove, 2)}ドル × ${formatNumber(lots, 2)}ロット × ${getGoldProfile().contractSize}oz = ${formatCurrency(profit)}。${convertedProfit}`;
+}
+
+function getProfitConversionDetail(profit) {
+  if (profitCurrency !== "JPY") {
+    return "";
+  }
+
+  return ` 円表示: ${formatCurrency(profit, "USD")} × USD/JPY ${formatNumber(getRate(), 3)} = ${formatCurrency(profit * getRate(), "JPY")}。`;
 }
 
 function getRequiredPipsDetail(requiredPips) {
@@ -235,9 +260,12 @@ function updateInstrumentUi() {
   }
 
   const instrument = getInstrument();
-  const needsRate = symbolSelect.value === "USDJPY";
+  const needsRate = symbolSelect.value === "USDJPY" || (selectedMode === "profit" && profitCurrency === "JPY");
   const isGold = symbolSelect.value === "XAUUSD";
   usdJpyRateField.hidden = !needsRate;
+  usdJpyRateHint.textContent = selectedMode === "profit" && profitCurrency === "JPY"
+    ? "円表示では、計算したドル建て損益をこのUSD/JPYレートで円換算します。"
+    : "USD/JPYは1pipの価値をドル換算するため、現在レートを入力してください。";
   goldAccountField.hidden = !(isGold || selectedMode === "risk");
   goldPriceMoveField.hidden = !isGold;
   instrumentDetails.innerHTML = instrument
@@ -257,12 +285,21 @@ function formatInputNumber(value, digits) {
   return Number.isInteger(value) ? String(value) : value.toFixed(digits).replace(/\.?0+$/, "");
 }
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("en-US", {
+function formatProfit(profitUsd) {
+  if (profitCurrency === "JPY") {
+    return formatCurrency(profitUsd * getRate(), "JPY");
+  }
+
+  return formatCurrency(profitUsd, "USD");
+}
+
+function formatCurrency(value, currency = "USD") {
+  const isYen = currency === "JPY";
+  return new Intl.NumberFormat(isYen ? "ja-JP" : "en-US", {
     style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 2,
-    minimumFractionDigits: 2,
+    currency,
+    maximumFractionDigits: isYen ? 0 : 2,
+    minimumFractionDigits: isYen ? 0 : 2,
   }).format(value);
 }
 
