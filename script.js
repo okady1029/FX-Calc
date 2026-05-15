@@ -5,8 +5,8 @@ const goldAccountProfiles = {
     details: [
       "スタンダード口座: 1ロット = 100トロイオンス",
       "最小単位目安: 0.01ロット",
-      "1ドルの価格変動 = 100pips",
-      "1ロット・1ドルの値幅 = $100.00 / 1ロット・1pip = $1.00",
+      "1ドルの価格変動 = 10pips",
+      "1ロット・1ドルの値幅 = $100.00 / 1ロット・1pip = $10.00",
     ],
   },
   micro: {
@@ -15,50 +15,16 @@ const goldAccountProfiles = {
     details: [
       "マイクロ口座: 1ロット = 1トロイオンス（スタンダードの100分の1）",
       "最小単位目安: 0.01ロット",
-      "1ドルの価格変動 = 100pips",
-      "1ロット・1ドルの値幅 = $1.00 / 1ロット・1pip = $0.01",
+      "1ドルの価格変動 = 10pips",
+      "1ロット・1ドルの値幅 = $1.00 / 1ロット・1pip = $0.10",
     ],
   },
 };
 
 const instruments = {
-  EURUSD: {
-    label: "EUR/USD",
-    contractSize: 100000,
-    pipSize: 0.0001,
-    quoteCurrency: "USD",
-    pipValuePerLot(rate) {
-      return this.contractSize * this.pipSize;
-    },
-    priceMoveFromPips(pips) {
-      return pips * this.pipSize;
-    },
-    details(rate) {
-      return ["1ロット = 100,000通貨", "1pip = 0.0001", "1ロット・1pip = $10.00"];
-    },
-  },
-  USDJPY: {
-    label: "USD/JPY",
-    contractSize: 100000,
-    pipSize: 0.01,
-    quoteCurrency: "JPY",
-    pipValuePerLot(rate) {
-      return (this.contractSize * this.pipSize) / rate;
-    },
-    priceMoveFromPips(pips) {
-      return pips * this.pipSize;
-    },
-    details(rate) {
-      return [
-        "1ロット = 100,000通貨",
-        "1pip = 0.01",
-        `1ロット・1pip = ¥1,000 ÷ ${formatNumber(rate, 3)} = ${formatCurrency(this.pipValuePerLot(rate))}`,
-      ];
-    },
-  },
   XAUUSD: {
     label: "GOLD/USD (XAU/USD)",
-    pipSize: 0.01,
+    pipSize: 0.1,
     quoteCurrency: "USD",
     get contractSize() {
       return getGoldProfile().contractSize;
@@ -67,10 +33,10 @@ const instruments = {
       return this.contractSize * this.pipSize;
     },
     priceMoveFromPips(pips) {
-      return pips / 100;
+      return pips / 10;
     },
     pipsFromPriceMove(priceMove) {
-      return priceMove * 100;
+      return priceMove * 10;
     },
     details(rate) {
       return [
@@ -87,6 +53,8 @@ const symbolSelect = document.querySelector("#symbol");
 const usdJpyRateField = document.querySelector("#usdJpyRateField");
 const usdJpyRateInput = document.querySelector("#usdJpyRate");
 const usdJpyRateHint = document.querySelector("#usdJpyRateHint");
+const fetchUsdJpyRateButton = document.querySelector("#fetchUsdJpyRate");
+const usdJpyRateStatus = document.querySelector("#usdJpyRateStatus");
 const goldAccountField = document.querySelector("#goldAccountField");
 const goldAccountType = document.querySelector("#goldAccountType");
 const pipsMoveInput = document.querySelector("#pipsMove");
@@ -118,6 +86,10 @@ goldPriceMoveInput.addEventListener("input", () => {
   lastGoldMoveInput = "price";
 });
 
+fetchUsdJpyRateButton.addEventListener("click", () => {
+  fetchUsdJpyRate();
+});
+
 const inputs = document.querySelectorAll("input, select");
 inputs.forEach((input) => input.addEventListener("input", calculate));
 
@@ -140,9 +112,6 @@ targetCurrencyButtons.forEach((button) => {
 modeTabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     const selectedMode = tab.dataset.mode;
-    if (selectedMode === "risk") {
-      symbolSelect.value = "XAUUSD";
-    }
     modeTabs.forEach((item) => {
       const isActive = item === tab;
       item.classList.toggle("active", isActive);
@@ -168,6 +137,71 @@ function getInstrument() {
 
 function getPipValue() {
   return getInstrument().pipValuePerLot(getRate());
+}
+
+function getQuoteCurrency() {
+  return getInstrument().quoteCurrency;
+}
+
+function convertFromQuoteCurrency(value, currency) {
+  const quoteCurrency = getQuoteCurrency();
+  if (currency === quoteCurrency) {
+    return value;
+  }
+
+  return quoteCurrency === "JPY" ? value / getRate() : value * getRate();
+}
+
+function convertToQuoteCurrency(value, currency) {
+  const quoteCurrency = getQuoteCurrency();
+  if (currency === quoteCurrency) {
+    return value;
+  }
+
+  return quoteCurrency === "JPY" ? value * getRate() : value / getRate();
+}
+
+async function fetchUsdJpyRate() {
+  const previousStatus = usdJpyRateStatus.textContent;
+  fetchUsdJpyRateButton.disabled = true;
+  fetchUsdJpyRateButton.textContent = "取得中";
+  usdJpyRateStatus.textContent = "USD/JPYレートを取得しています。";
+
+  try {
+    const response = await fetch("https://open.er-api.com/v6/latest/USD", {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("rate request failed");
+    }
+
+    const data = await response.json();
+    const rate = Number(data?.rates?.JPY);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      throw new Error("JPY rate is missing");
+    }
+
+    usdJpyRateInput.value = formatInputNumber(rate, 3);
+    usdJpyRateStatus.textContent = `自動取得済み: USD/JPY ${formatNumber(rate, 3)}（${formatRateUpdateTime(data)}）`;
+    calculate();
+  } catch (error) {
+    usdJpyRateStatus.textContent = `${previousStatus} 自動取得に失敗したため、現在の手入力値を使っています。`;
+  } finally {
+    fetchUsdJpyRateButton.disabled = false;
+    fetchUsdJpyRateButton.textContent = "自動取得";
+  }
+}
+
+function formatRateUpdateTime(data) {
+  if (data?.time_last_update_utc) {
+    return `更新: ${data.time_last_update_utc}`;
+  }
+
+  if (data?.time_last_update_unix) {
+    return `更新: ${new Date(data.time_last_update_unix * 1000).toLocaleString("ja-JP")}`;
+  }
+
+  return "更新時刻不明";
 }
 
 function updateCurrencyButtons(buttons, activeButton) {
@@ -210,7 +244,7 @@ function calculateProfit() {
 
 function calculateRequiredPips() {
   const lots = Number.parseFloat(document.querySelector("#lotsPips").value) || 0;
-  const targetProfit = getTargetProfitUsd();
+  const targetProfit = getTargetProfitInQuoteCurrency();
   const pipValue = lots * getPipValue();
   const requiredPips = pipValue === 0 ? 0 : targetProfit / pipValue;
 
@@ -218,9 +252,9 @@ function calculateRequiredPips() {
   pipsDetail.textContent = getRequiredPipsDetail(requiredPips, targetProfit);
 }
 
-function getTargetProfitUsd() {
+function getTargetProfitInQuoteCurrency() {
   const targetProfit = Number.parseFloat(targetProfitInput.value) || 0;
-  return targetCurrency === "JPY" ? targetProfit / getRate() : targetProfit;
+  return convertToQuoteCurrency(targetProfit, targetCurrency);
 }
 
 function calculateRiskLot() {
@@ -239,7 +273,7 @@ function calculateRiskLot() {
 }
 
 function getProfitPips() {
-  if (symbolSelect.value !== "XAUUSD" || lastGoldMoveInput === "pips") {
+  if (lastGoldMoveInput === "pips") {
     return Number.parseFloat(pipsMoveInput.value) || 0;
   }
 
@@ -248,12 +282,7 @@ function getProfitPips() {
 }
 
 function syncGoldMoveInputs() {
-  const isGold = symbolSelect.value === "XAUUSD";
-  goldPriceMoveField.hidden = !isGold;
-
-  if (!isGold) {
-    return;
-  }
+  goldPriceMoveField.hidden = false;
 
   if (lastGoldMoveInput === "price") {
     const priceMove = Number.parseFloat(goldPriceMoveInput.value) || 0;
@@ -267,64 +296,51 @@ function syncGoldMoveInputs() {
 
 function getProfitDetail(lots, pips, profit) {
   const convertedProfit = getProfitConversionDetail(profit);
-
-  if (symbolSelect.value !== "XAUUSD") {
-    return `1ロットあたり${formatCurrency(getPipValue())} × ${formatNumber(lots, 2)}ロット × ${formatNumber(pips, 2)}pips = ${formatCurrency(profit)}。${convertedProfit}`;
-  }
-
   const priceMove = instruments.XAUUSD.priceMoveFromPips(pips);
   return `${formatNumber(pips, 2)}pips = ${formatNumber(priceMove, 2)}ドルの値幅。${formatNumber(priceMove, 2)}ドル × ${formatNumber(lots, 2)}ロット × ${getGoldProfile().contractSize}oz = ${formatCurrency(profit)}。${convertedProfit}`;
 }
 
 function getProfitConversionDetail(profit) {
-  if (profitCurrency !== "JPY") {
+  const quoteCurrency = getQuoteCurrency();
+  if (profitCurrency === quoteCurrency) {
     return "";
   }
 
-  return ` 円表示: ${formatCurrency(profit, "USD")} × USD/JPY ${formatNumber(getRate(), 3)} = ${formatCurrency(profit * getRate(), "JPY")}。`;
+  return ` 円表示: ${formatCurrency(profit, "USD")} × USD/JPY ${formatNumber(getRate(), 3)} = ${formatCurrency(convertFromQuoteCurrency(profit, "JPY"), "JPY")}。`;
 }
 
-function getRequiredPipsDetail(requiredPips, targetProfitUsd) {
-  const targetDetail = getTargetProfitConversionDetail(targetProfitUsd);
-
-  if (symbolSelect.value !== "XAUUSD") {
-    return `${targetDetail}必要pipsは、目標利益（USD） ÷（ロット数 × 1ロットあたりのpips価値）で計算します。`;
-  }
-
+function getRequiredPipsDetail(requiredPips, targetProfit) {
+  const targetDetail = getTargetProfitConversionDetail(targetProfit);
   const priceMove = instruments.XAUUSD.priceMoveFromPips(requiredPips);
-  return `${targetDetail}${formatNumber(requiredPips, 2)}pips = ${formatNumber(priceMove, 2)}ドルの値幅です。GOLD/USDは1ドルの値幅を100pipsとして換算します。`;
+  return `${targetDetail}${formatNumber(requiredPips, 2)}pips = ${formatNumber(priceMove, 2)}ドルの値幅です。GOLD/USDは1ドルの値幅を10pipsとして換算します。`;
 }
 
-function getTargetProfitConversionDetail(targetProfitUsd) {
-  if (targetCurrency !== "JPY") {
-    return `目標利益 ${formatCurrency(targetProfitUsd, "USD")}。`;
+function getTargetProfitConversionDetail(targetProfit) {
+  const quoteCurrency = getQuoteCurrency();
+  if (targetCurrency === quoteCurrency) {
+    return `目標利益 ${formatCurrency(targetProfit, quoteCurrency)}。`;
   }
 
-  const targetProfitJpy = Number.parseFloat(targetProfitInput.value) || 0;
-  return `目標利益 ${formatCurrency(targetProfitJpy, "JPY")} ÷ USD/JPY ${formatNumber(getRate(), 3)} = ${formatCurrency(targetProfitUsd, "USD")}。`;
+  const inputTargetProfit = Number.parseFloat(targetProfitInput.value) || 0;
+  return `目標利益 ${formatCurrency(inputTargetProfit, targetCurrency)} ÷ USD/JPY ${formatNumber(getRate(), 3)} = ${formatCurrency(targetProfit, quoteCurrency)}。`;
 }
 
 function updateInstrumentUi() {
   const selectedMode = document.querySelector(".mode-tab.active").dataset.mode;
-  if (selectedMode === "risk" && symbolSelect.value !== "XAUUSD") {
-    symbolSelect.value = "XAUUSD";
-  }
-
   const instrument = getInstrument();
-  const needsProfitRate = selectedMode === "profit" && profitCurrency === "JPY";
-  const needsTargetRate = selectedMode === "pips" && targetCurrency === "JPY";
-  const needsRate = symbolSelect.value === "USDJPY" || needsProfitRate || needsTargetRate;
-  const isGold = symbolSelect.value === "XAUUSD";
+  const needsProfitRate = selectedMode === "profit" && profitCurrency !== instrument.quoteCurrency;
+  const needsTargetRate = selectedMode === "pips" && targetCurrency !== instrument.quoteCurrency;
+  const needsRate = needsProfitRate || needsTargetRate;
   usdJpyRateField.hidden = !needsRate;
   if (needsTargetRate) {
-    usdJpyRateHint.textContent = "円入力の目標利益を、このUSD/JPYレートでドル建て目標利益に換算します。";
+    usdJpyRateHint.textContent = "入力した目標利益を、このUSD/JPYレートで計算通貨に換算します。";
   } else if (needsProfitRate) {
-    usdJpyRateHint.textContent = "円表示では、計算したドル建て損益をこのUSD/JPYレートで円換算します。";
+    usdJpyRateHint.textContent = "表示通貨が計算通貨と異なるため、このUSD/JPYレートで換算します。";
   } else {
-    usdJpyRateHint.textContent = "USD/JPYは1pipの価値をドル換算するため、現在レートを入力してください。";
+    usdJpyRateHint.textContent = "USD/JPYレートはドル円換算が必要な場合に使います。";
   }
-  goldAccountField.hidden = !(isGold || selectedMode === "risk");
-  goldPriceMoveField.hidden = !isGold;
+  goldAccountField.hidden = false;
+  goldPriceMoveField.hidden = false;
   instrumentDetails.innerHTML = instrument
     .details(getRate())
     .map((detail) => `<li>${detail}</li>`)
@@ -343,12 +359,8 @@ function formatInputNumber(value, digits) {
   return Number.isInteger(value) ? String(value) : value.toFixed(digits).replace(/\.?0+$/, "");
 }
 
-function formatProfit(profitUsd) {
-  if (profitCurrency === "JPY") {
-    return formatCurrency(profitUsd * getRate(), "JPY");
-  }
-
-  return formatCurrency(profitUsd, "USD");
+function formatProfit(profit) {
+  return formatCurrency(convertFromQuoteCurrency(profit, profitCurrency), profitCurrency);
 }
 
 function formatCurrency(value, currency = "USD") {
@@ -369,3 +381,4 @@ function formatNumber(value, digits) {
 }
 
 calculate();
+fetchUsdJpyRate();

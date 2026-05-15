@@ -3,33 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FX Pips 利益計算ツール</title>
+    <title>GOLD Pips 利益計算ツール</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <section class="hero" aria-labelledby="page-title">
-        <p class="eyebrow">FX / Gold Profit Calculator</p>
-        <h1 id="page-title">ロット・pips・利益をすばやく換算</h1>
+        <p class="eyebrow">Gold Profit Calculator</p>
+        <h1 id="page-title">GOLDのロット・pips・利益をすばやく換算</h1>
         <p class="lead">
-          EUR/USD、USD/JPY、GOLD/USD（XAU/USD）を切り替えて、指定したロットで何pips動くと何ドルの損益になるか、また目標利益に必要なpipsを計算できます。
+          GOLD/USD（XAU/USD）専用で、指定したロットで何pips動くといくらの損益になるか、また目標利益に必要なpipsを計算できます。
         </p>
       </section>
 
       <section class="calculator" aria-label="計算フォーム">
-        <div class="field full-width">
-          <label for="symbol">通貨ペア / 銘柄</label>
-          <select id="symbol" name="symbol">
-            <option value="EURUSD">EUR/USD</option>
-            <option value="USDJPY">USD/JPY</option>
-            <option value="XAUUSD">GOLD/USD (XAU/USD)</option>
-          </select>
-        </div>
+        <input id="symbol" name="symbol" type="hidden" value="XAUUSD" />
 
         <div class="field full-width rate-field" id="usdJpyRateField" hidden>
           <label for="usdJpyRate">USD/JPY レート</label>
-          <input id="usdJpyRate" type="number" inputmode="decimal" min="1" step="0.001" value="155.000" />
-          <p class="hint" id="usdJpyRateHint">USD/JPYは1pipの価値をドル換算するため、現在レートを入力してください。</p>
+          <div class="rate-input-row">
+            <input id="usdJpyRate" type="number" inputmode="decimal" min="1" step="0.001" value="155.000" />
+            <button class="secondary-button" id="fetchUsdJpyRate" type="button">自動取得</button>
+          </div>
+          <p class="hint" id="usdJpyRateHint">USD/JPYレートはドル円換算が必要な場合に使います。</p>
+          <p class="hint" id="usdJpyRateStatus" aria-live="polite">ページ読み込み時に自動取得します。取得できない場合は手入力値を使います。</p>
         </div>
 
         <div class="field full-width gold-account-field" id="goldAccountField" hidden>
@@ -38,16 +35,16 @@
             <option value="standard">スタンダード口座（1ロット = 100トロイオンス）</option>
             <option value="micro">マイクロ口座（1ロット = 1トロイオンス）</option>
           </select>
-          <p class="hint">XM等のスタンダード口座では1ドルの値幅 = 100pips、1ロットなら100ドルの損益です。</p>
+          <p class="hint">XM等のスタンダード口座では1ドルの値幅 = 10pips、1ロットなら100ドルの損益です。</p>
         </div>
 
         <div class="mode-tabs" role="tablist" aria-label="計算モード">
-          <button class="mode-tab active" type="button" data-mode="profit" aria-selected="true">pips → 利益</button>
-          <button class="mode-tab" type="button" data-mode="pips" aria-selected="false">利益 → 必要pips</button>
+          <button class="mode-tab active" type="button" data-mode="pips" aria-selected="true">利益 → 必要pips</button>
+          <button class="mode-tab" type="button" data-mode="profit" aria-selected="false">pips → 利益</button>
           <button class="mode-tab" type="button" data-mode="risk" aria-selected="false">資金管理 → ロット</button>
         </div>
 
-        <form id="profitForm" class="calc-form" data-panel="profit">
+        <form id="profitForm" class="calc-form hidden" data-panel="profit">
           <div class="field">
             <label for="lotsProfit">ロット数</label>
             <input id="lotsProfit" type="number" inputmode="decimal" min="0" step="0.01" value="1" required />
@@ -59,7 +56,7 @@
           <div class="field full-width" id="goldPriceMoveField" hidden>
             <label for="goldPriceMove">GOLDの価格変動幅（ドル）</label>
             <input id="goldPriceMove" type="number" inputmode="decimal" step="0.01" value="0.10" />
-            <p class="hint">GOLD/USDは1ドル動くと100pipsとして扱うため、pips入力と自動で連動します。</p>
+            <p class="hint">GOLD/USDは1ドル動くと10pipsとして扱うため、pips入力と自動で連動します。</p>
           </div>
           <div class="field full-width">
             <span class="field-label">想定利益の表示通貨</span>
@@ -67,7 +64,7 @@
               <button class="currency-button profit-currency-button active" type="button" data-currency="USD" aria-pressed="true">ドル表示</button>
               <button class="currency-button profit-currency-button" type="button" data-currency="JPY" aria-pressed="false">円表示</button>
             </div>
-            <p class="hint">円表示はUSD/JPYレートでドル建て損益を円換算します。</p>
+            <p class="hint">表示通貨が計算通貨と異なる場合は、USD/JPYレートで換算します。</p>
           </div>
           <output class="result-card" id="profitResult" for="symbol lotsProfit pipsMove goldPriceMove usdJpyRate goldAccountType">
             <span class="result-label">想定利益</span>
@@ -76,7 +73,7 @@
           </output>
         </form>
 
-        <form id="pipsForm" class="calc-form hidden" data-panel="pips">
+        <form id="pipsForm" class="calc-form" data-panel="pips">
           <div class="field">
             <label for="lotsPips">ロット数</label>
             <input id="lotsPips" type="number" inputmode="decimal" min="0" step="0.01" value="1" required />
@@ -91,7 +88,7 @@
               <button class="currency-button target-currency-button active" type="button" data-currency="USD" aria-pressed="true">ドル入力</button>
               <button class="currency-button target-currency-button" type="button" data-currency="JPY" aria-pressed="false">円入力</button>
             </div>
-            <p class="hint">円入力はUSD/JPYレートでドル建て目標利益に換算して必要pipsを計算します。</p>
+            <p class="hint">入力通貨が計算通貨と異なる場合は、USD/JPYレートで換算して必要pipsを計算します。</p>
           </div>
           <output class="result-card" id="pipsResult" for="symbol lotsPips targetProfit usdJpyRate goldAccountType">
             <span class="result-label">必要な変動幅</span>
@@ -112,7 +109,7 @@
           <div class="field full-width">
             <label for="stopLossDollars">GOLDの損切り幅（ドル）</label>
             <input id="stopLossDollars" type="number" inputmode="decimal" min="0" step="0.01" value="5" required />
-            <p class="hint">例：2,000ドルで買って1,995ドルに損切りを置く場合、損切り幅は5ドル（500pips）です。</p>
+            <p class="hint">例：2,000ドルで買って1,995ドルに損切りを置く場合、損切り幅は5ドル（50pips）です。</p>
           </div>
           <output class="result-card" id="riskResult" for="equity riskPercent stopLossDollars goldAccountType">
             <span class="result-label">適正ロット目安（GOLD）</span>
@@ -124,7 +121,7 @@
         <aside class="formula" aria-labelledby="formula-title">
           <h2 id="formula-title">計算ルール</h2>
           <ul id="instrumentDetails"></ul>
-          <p>FXは1ロットあたりのpips価値 × ロット数 × pips、GOLD/USDは価格変動幅（ドル）× ロット数 × 契約サイズでも損益（USD）を計算します。</p>
+          <p>GOLD/USDは1ロットあたりのpips価値 × ロット数 × pips、または価格変動幅（ドル）× ロット数 × 契約サイズで損益（USD）を計算します。</p>
         </aside>
       </section>
     </main>
